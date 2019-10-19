@@ -1,8 +1,8 @@
 package main
 
 import (
-	"errors"
 	"fmt"
+	"log"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
@@ -10,9 +10,10 @@ import (
 const startcommand string = "/start"
 const nextmatchcommand string = "/nextmatch"
 
-func reply(update *tgbotapi.Update) (*tgbotapi.MessageConfig, error) {
+func reply(bot sender, update *tgbotapi.Update) {
 	if update.Message == nil {
-		return nil, errors.New("Not a message update")
+		log.Println("Not a message update")
+		return
 	}
 
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
@@ -35,10 +36,13 @@ func reply(update *tgbotapi.Update) (*tgbotapi.MessageConfig, error) {
 			כדי לראות אותי בפעולה, שלחו לי %s`, update.Message.Text, nextmatchcommand)
 				msg.ReplyToMessageID = update.Message.MessageID
 			} else {
-				return nil, errors.New("Nothing to send")
+				log.Println("Nothing to send")
+				return
 			}
 		}
 	}
 
-	return &msg, nil
+	if _, err := bot.Send(&msg); err != nil {
+		log.Fatal(err)
+	}
 }
