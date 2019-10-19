@@ -8,12 +8,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var numericKeyboard = tgbotapi.NewReplyKeyboard(
-	tgbotapi.NewKeyboardButtonRow(
-		tgbotapi.NewKeyboardButton("מתי המשחק הבא?"),
-	),
-)
-
 func main() {
 	err := godotenv.Load()
 	if err != nil {
