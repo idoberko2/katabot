@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -24,6 +25,22 @@ query getNextRound($timestamp: Int!) {
 			guestTeam 
 			stadium 
 		} 
+	} 
+}`
+
+const getRoundQuery = `
+query getRound($league: String!,$season: String!,$round: String!) { 
+	round(league: $league, season: $season, round: $round) { 
+		league 
+		season 
+		round 
+		isCompleted 
+		games { 
+			date 
+			homeTeam 
+			guestTeam 
+			stadium 
+		}
 	} 
 }`
 
@@ -103,6 +120,36 @@ type nextRoundResponse struct {
 	} `json:"data"`
 }
 
+type getRoundResponse struct {
+	Data struct {
+		Round roundResponse `json:"round"`
+	} `json:"data"`
+}
+
+func extractRoundFromResponse(r *roundResponse) *Round {
+	var games []Game
+
+	for _, g := range r.Games {
+		t, _ := time.Parse(time.RFC3339, string(g.Date))
+		games = append(games, Game{
+			HomeTeam:  g.HomeTeam,
+			GuestTeam: g.GuestTeam,
+			Stadium:   g.Stadium,
+			Date:      t,
+		})
+	}
+
+	rr := Round{
+		LeagueID:    r.League,
+		SeasonID:    r.Season,
+		RoundID:     r.Round,
+		IsCompleted: r.IsCompleted,
+		Games:       games,
+	}
+
+	return &rr
+}
+
 func getNextRound(ctx context.Context, c apiRequestMaker) (*Round, error) {
 	var j nextRoundResponse
 	err := c.Request(map[string]interface{}{
@@ -116,27 +163,35 @@ func getNextRound(ctx context.Context, c apiRequestMaker) (*Round, error) {
 		return nil, err
 	}
 
-	var games []Game
+	return extractRoundFromResponse(&j.Data.NextRound), nil
+}
 
-	for _, g := range j.Data.NextRound.Games {
-		t, _ := time.Parse(time.RFC3339, string(g.Date))
-		games = append(games, Game{
-			HomeTeam:  g.HomeTeam,
-			GuestTeam: g.GuestTeam,
-			Stadium:   g.Stadium,
-			Date:      t,
-		})
+func getSpecificRound(ctx context.Context, c apiRequestMaker, l, s, r string) (*Round, error) {
+	var j getRoundResponse
+	err := c.Request(map[string]interface{}{
+		"operationName": "getRound",
+		"query":         getRoundQuery,
+		"variables": map[string]string{
+			"league": l,
+			"season": s,
+			"round":  r,
+		},
+	}, &j)
+	if err != nil {
+		return nil, err
 	}
 
-	r := Round{
-		LeagueID:    j.Data.NextRound.League,
-		SeasonID:    j.Data.NextRound.Season,
-		RoundID:     j.Data.NextRound.Round,
-		IsCompleted: j.Data.NextRound.IsCompleted,
-		Games:       games,
+	return extractRoundFromResponse(&j.Data.Round), nil
+}
+
+func findKatamonGame(r *Round) *Game {
+	for _, g := range r.Games {
+		if g.HomeTeam == katamon || g.GuestTeam == katamon {
+			return &g
+		}
 	}
 
-	return &r, nil
+	return nil
 }
 
 // GetNextKatamonGame Finds the next round in which katamon plays and returns the round information and the game information
@@ -146,14 +201,20 @@ func GetNextKatamonGame(ctx context.Context, c apiRequestMaker) (*Round, *Game, 
 		return nil, nil, err
 	}
 
-	var g Game
+	g := findKatamonGame(r)
 
-	for _, gi := range r.Games {
-		if gi.HomeTeam == katamon || gi.GuestTeam == katamon {
-			g = gi
-			break
+	if g.Date.Before(time.Now()) {
+		ri, err := strconv.Atoi(r.RoundID)
+		if err != nil {
+			return nil, nil, err
 		}
+		r, err = getSpecificRound(ctx, c, r.LeagueID, r.SeasonID, strconv.Itoa(ri+1))
+		if err != nil {
+			return nil, nil, err
+		}
+
+		g = findKatamonGame(r)
 	}
 
-	return r, &g, nil
+	return r, g, nil
 }
