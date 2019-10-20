@@ -3,33 +3,29 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
-	"github.com/shurcooL/graphql"
-
 	"github.com/stretchr/testify/assert"
-
 	"github.com/stretchr/testify/mock"
 )
 
-type fakeQuerier struct {
+type fakeAPIClient struct {
 	mock.Mock
 }
 
-func (fq *fakeQuerier) Query(ctx context.Context, q interface{}, variables map[string]interface{}) error {
-	args := fq.Called(ctx, q, variables)
+func (fq *fakeAPIClient) Request(b map[string]interface{}, j interface{}) error {
+	args := fq.Called(b, j)
 
 	return args.Error(0)
 }
 
 func TestGetNextKatamonGame_error(t *testing.T) {
-	fq := fakeQuerier{}
+	fc := fakeAPIClient{}
 	ctx := context.Background()
-	fq.On("Query", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("Some error occurred"))
+	fc.On("Request", mock.Anything, mock.Anything).Return(errors.New("Some error occurred"))
 
-	_, _, err := GetNextKatamonGame(ctx, &fq)
+	_, _, err := GetNextKatamonGame(ctx, &fc)
 
 	if err == nil {
 		t.Fatal("Expected error, got nil")
@@ -37,32 +33,39 @@ func TestGetNextKatamonGame_error(t *testing.T) {
 }
 
 func TestGetNextKatamonGame_simple(t *testing.T) {
-	var query roundQuery
-	fq := fakeQuerier{}
+	var resp nextRoundResponse
+	fc := fakeAPIClient{}
 	ctx := context.Background()
 	gt := time.Now().Add(time.Hour * 12)
-	fq.On("Query", ctx, &query, mock.Anything).Return(nil).Run(func(args mock.Arguments) {
-		fmt.Println(args)
-		arg := args.Get(1).(*roundQuery)
-		arg.round = graphqlRound{
-			league:      "45",
-			season:      "21",
-			round:       "7",
-			isCompleted: false,
-			games: []graphqlGame{
-				{
-					homeTeam:  "הפועל קטמון י-ם",
-					guestTeam: "Beitar",
-					stadium:   "Teddy",
-					date: graphqlDateTime{
-						iso: graphql.String(gt.Format(time.RFC3339)),
+	fc.On("Request", map[string]interface{}{
+		"operationName": "getNextRound",
+		"query":         nextRoundQuery,
+		"variables": map[string]int64{
+			"timestamp": time.Now().Unix(),
+		},
+	}, &resp).Return(nil).Run(func(args mock.Arguments) {
+		arg := args.Get(1).(*nextRoundResponse)
+		arg.Data = struct {
+			NextRound roundResponse `json:"nextRound"`
+		}{
+			NextRound: roundResponse{
+				League:      "45",
+				Season:      "21",
+				Round:       "7",
+				IsCompleted: false,
+				Games: []gameResponse{
+					{
+						HomeTeam:  "הפועל קטמון י-ם",
+						GuestTeam: "Beitar",
+						Stadium:   "Teddy",
+						Date:      gt.Format(time.RFC3339),
 					},
 				},
 			},
 		}
 	})
 
-	r, g, err := GetNextKatamonGame(ctx, &fq)
+	r, g, err := GetNextKatamonGame(ctx, &fc)
 
 	if err != nil {
 		t.Fatal("Expected nil, got: ", err)

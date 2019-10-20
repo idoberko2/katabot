@@ -1,13 +1,31 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"time"
-
-	"github.com/shurcooL/graphql"
 )
 
 const katamon = "הפועל קטמון י-ם"
+const nextRoundQuery = `
+query getNextRound($timestamp: Int!) { 
+	nextRound(timestamp: $timestamp) { 
+		league 
+		season 
+		round 
+		isCompleted 
+		games { 
+			date 
+			homeTeam 
+			guestTeam 
+			stadium 
+		} 
+	} 
+}`
 
 // Game contains data about a single game
 type Game struct {
@@ -26,57 +44,95 @@ type Round struct {
 	Games       []Game
 }
 
-type graphqlGame struct {
-	homeTeam  graphql.String
-	guestTeam graphql.String
-	stadium   graphql.String
-	date      graphqlDateTime
+type apiRequestMaker interface {
+	Request(map[string]interface{}, interface{}) error
 }
 
-type graphqlDateTime struct {
-	iso graphql.String
+// APIClient is the client for interacting with the GraphQL server
+type APIClient struct {
+	URL  string
+	Mime string
 }
 
-type graphqlRound struct {
-	league      graphql.String
-	season      graphql.String
-	round       graphql.String
-	isCompleted graphql.Boolean
-	games       []graphqlGame
+// Request makes a GraphQL using the supplied query q and populates the response in j
+func (c APIClient) Request(q map[string]interface{}, j interface{}) error {
+	p, err := json.Marshal(q)
+	if err != nil {
+		return err
+	}
+	resp, err := http.Post(c.URL, c.Mime, bytes.NewBuffer(p))
+	if err != nil {
+		return fmt.Errorf("API request failed with error: %s", err)
+	}
+
+	rb, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("Invalid API response, failed parsing JSON with error: %s", err)
+	}
+
+	err = json.Unmarshal(rb, j)
+	if err != nil {
+		return fmt.Errorf("Invalid API response, failed parsing JSON with error: %s", err)
+	}
+
+	return nil
 }
 
-type roundQuery struct {
-	round graphqlRound
+type nextRoundParam struct {
+	timestamp int64
 }
 
-type querier interface {
-	Query(ctx context.Context, q interface{}, variables map[string]interface{}) error
+type gameResponse struct {
+	Date      string `json:"date"`
+	HomeTeam  string `json:"homeTeam"`
+	GuestTeam string `json:"guestTeam"`
+	Stadium   string `json:"stadium"`
 }
 
-func getNextRound(ctx context.Context, q querier) (*Round, error) {
-	var query roundQuery
-	err := q.Query(ctx, &query, nil)
+type roundResponse struct {
+	League      string         `json:"league"`
+	Season      string         `json:"season"`
+	Round       string         `json:"round"`
+	IsCompleted bool           `json:"isCompleted"`
+	Games       []gameResponse `json:"games"`
+}
+
+type nextRoundResponse struct {
+	Data struct {
+		NextRound roundResponse `json:"nextRound"`
+	} `json:"data"`
+}
+
+func getNextRound(ctx context.Context, c apiRequestMaker) (*Round, error) {
+	var j nextRoundResponse
+	err := c.Request(map[string]interface{}{
+		"operationName": "getNextRound",
+		"query":         nextRoundQuery,
+		"variables": map[string]int64{
+			"timestamp": time.Now().Unix(),
+		},
+	}, &j)
 	if err != nil {
 		return nil, err
 	}
 
 	var games []Game
 
-	for _, g := range query.round.games {
-		t, _ := time.Parse(time.RFC3339, string(g.date.iso))
+	for _, g := range j.Data.NextRound.Games {
+		t, _ := time.Parse(time.RFC3339, string(g.Date))
 		games = append(games, Game{
-			HomeTeam:  string(g.homeTeam),
-			GuestTeam: string(g.guestTeam),
-			Stadium:   string(g.stadium),
+			HomeTeam:  g.HomeTeam,
+			GuestTeam: g.GuestTeam,
+			Stadium:   g.Stadium,
 			Date:      t,
 		})
 	}
 
 	r := Round{
-		LeagueID:    string(query.round.league),
-		SeasonID:    string(query.round.season),
-		RoundID:     string(query.round.round),
-		IsCompleted: bool(query.round.isCompleted),
+		LeagueID:    j.Data.NextRound.League,
+		SeasonID:    j.Data.NextRound.Season,
+		RoundID:     j.Data.NextRound.Round,
+		IsCompleted: j.Data.NextRound.IsCompleted,
 		Games:       games,
 	}
 
@@ -84,8 +140,8 @@ func getNextRound(ctx context.Context, q querier) (*Round, error) {
 }
 
 // GetNextKatamonGame Finds the next round in which katamon plays and returns the round information and the game information
-func GetNextKatamonGame(ctx context.Context, q querier) (*Round, *Game, error) {
-	r, err := getNextRound(ctx, q)
+func GetNextKatamonGame(ctx context.Context, c apiRequestMaker) (*Round, *Game, error) {
+	r, err := getNextRound(ctx, c)
 	if err != nil {
 		return nil, nil, err
 	}
