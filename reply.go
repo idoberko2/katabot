@@ -4,13 +4,33 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 const startcommand string = "/start"
 const nextmatchcommand string = "/nextmatch"
+
+func translateDay(d string) string {
+	switch d {
+	case "Sunday":
+		return "ראשון"
+	case "Monday":
+		return "שני"
+	case "Tuesday":
+		return "שלישי"
+	case "Wednesday":
+		return "רביעי"
+	case "Thursday":
+		return "חמישי"
+	case "Friday":
+		return "שישי"
+	case "Saturday":
+		return "שבת"
+	}
+
+	return ""
+}
 
 func reply(ctx context.Context, bot sender, update *tgbotapi.Update, gf GamesFetcher) {
 	if update.Message == nil {
@@ -28,15 +48,15 @@ func reply(ctx context.Context, bot sender, update *tgbotapi.Update, gf GamesFet
 		}
 	case nextmatchcommand:
 		{
-			_, g, err := gf.GetNextKatamonGame(ctx)
+			r, g, err := gf.GetNextKatamonGame(ctx)
 			if err != nil {
 				msg.Text = `משהו קרה ואני לא מצליח למצוא את המשחק הבא 🤔
 		נקווה שבפעם הבאה שתנסו אצליח אבל אין לדעת ¯\_(ツ)_/¯`
 			} else {
-				msg.Text = fmt.Sprintf(`המשחק הבא:
-		%s - %s,
-		מיקום: %s,
-		זמן: %s`, g.HomeTeam, g.GuestTeam, g.Stadium, g.Date.Format(time.RFC3339))
+				msg.Text = fmt.Sprintf(`המשחק הבא - מחזור %s
+		%s - %s
+		מיקום: %s
+		יום %s, %s`, r.RoundID, g.HomeTeam, g.GuestTeam, g.Stadium, translateDay(g.Date.Format("Monday")), g.Date.Format("15:04"))
 			}
 		}
 	default:

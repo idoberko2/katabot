@@ -115,10 +115,10 @@ func TestReply_nextmatch(t *testing.T) {
 	fg.On("GetNextKatamonGame", mock.Anything).Return(&r, &g, nil)
 	bot := fakeBot{
 		testedCommand: nextmatchcommand,
-		expectedMessage: fmt.Sprintf(`המשחק הבא:
-		%s - %s,
-		מיקום: %s,
-		זמן: %s`, g.HomeTeam, g.GuestTeam, g.Stadium, g.Date.Format(time.RFC3339)),
+		expectedMessage: fmt.Sprintf(`המשחק הבא - מחזור %s
+		%s - %s
+		מיקום: %s
+		יום %s, %s`, r.RoundID, g.HomeTeam, g.GuestTeam, g.Stadium, translateDay(g.Date.Format("Monday")), g.Date.Format("15:04")),
 		t: t,
 	}
 	u := tgbotapi.Update{
