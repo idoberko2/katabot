@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"os"
 
@@ -23,13 +25,26 @@ func main() {
 		log.Fatal(err)
 	}
 
+	gh := os.Getenv("GRAPHQL_HOST")
+	if gh == "" {
+		log.Fatal("Missing GraphQL host")
+	}
+
 	bot.Debug = os.Getenv("DEBUG") == "1"
 
 	updateConfig := tgbotapi.NewUpdate(0)
 	updateConfig.Timeout = 60
 	updates, err := bot.GetUpdatesChan(updateConfig)
 
+	ctx := context.Background()
+	gf := GamesFetcherInst{
+		Client: APIClient{
+			URL:  fmt.Sprintf("%s/graphql", gh),
+			Mime: "application/json",
+		},
+	}
+
 	for update := range updates {
-		go reply(bot, &update)
+		go reply(ctx, bot, &update, &gf)
 	}
 }

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
@@ -10,7 +12,7 @@ import (
 const startcommand string = "/start"
 const nextmatchcommand string = "/nextmatch"
 
-func reply(bot sender, update *tgbotapi.Update) {
+func reply(ctx context.Context, bot sender, update *tgbotapi.Update, gf GamesFetcher) {
 	if update.Message == nil {
 		log.Println("Not a message update")
 		return
@@ -26,7 +28,12 @@ func reply(bot sender, update *tgbotapi.Update) {
 		}
 	case nextmatchcommand:
 		{
-			msg.Text = "המשחק הבא יהיה ב..."
+			_, g, _ := gf.GetNextKatamonGame(ctx)
+			fmt.Printf("%+v\n", g)
+			msg.Text = fmt.Sprintf(`המשחק הבא:
+		%s - %s,
+		מיקום: %s,
+		זמן: %s`, g.HomeTeam, g.GuestTeam, g.Stadium, g.Date.Format(time.RFC3339))
 		}
 	default:
 		{

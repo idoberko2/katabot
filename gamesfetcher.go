@@ -194,9 +194,19 @@ func findKatamonGame(r *Round) *Game {
 	return nil
 }
 
+// GamesFetcher is an interface for fetching Katamon games
+type GamesFetcher interface {
+	GetNextKatamonGame(ctx context.Context) (*Round, *Game, error)
+}
+
+// GamesFetcherInst is a wrapper for fetching Katamon games
+type GamesFetcherInst struct {
+	Client apiRequestMaker
+}
+
 // GetNextKatamonGame Finds the next round in which katamon plays and returns the round information and the game information
-func GetNextKatamonGame(ctx context.Context, c apiRequestMaker) (*Round, *Game, error) {
-	r, err := getNextRound(ctx, c)
+func (gf *GamesFetcherInst) GetNextKatamonGame(ctx context.Context) (*Round, *Game, error) {
+	r, err := getNextRound(ctx, gf.Client)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -208,7 +218,7 @@ func GetNextKatamonGame(ctx context.Context, c apiRequestMaker) (*Round, *Game, 
 		if err != nil {
 			return nil, nil, err
 		}
-		r, err = getSpecificRound(ctx, c, r.LeagueID, r.SeasonID, strconv.Itoa(ri+1))
+		r, err = getSpecificRound(ctx, gf.Client, r.LeagueID, r.SeasonID, strconv.Itoa(ri+1))
 		if err != nil {
 			return nil, nil, err
 		}

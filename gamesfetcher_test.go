@@ -22,10 +22,13 @@ func (fq *fakeAPIClient) Request(b map[string]interface{}, j interface{}) error 
 
 func TestGetNextKatamonGame_error(t *testing.T) {
 	fc := fakeAPIClient{}
+	gf := GamesFetcherInst{
+		Client: &fc,
+	}
 	ctx := context.Background()
 	fc.On("Request", mock.Anything, mock.Anything).Return(errors.New("Some error occurred"))
 
-	_, _, err := GetNextKatamonGame(ctx, &fc)
+	_, _, err := gf.GetNextKatamonGame(ctx)
 
 	if err == nil {
 		t.Fatal("Expected error, got nil")
@@ -34,6 +37,9 @@ func TestGetNextKatamonGame_error(t *testing.T) {
 
 func TestGetNextKatamonGame_simple(t *testing.T) {
 	fc := fakeAPIClient{}
+	gf := GamesFetcherInst{
+		Client: &fc,
+	}
 	ctx := context.Background()
 	gt := time.Now().Add(time.Hour * 12)
 	fc.On("Request", map[string]interface{}{
@@ -64,7 +70,7 @@ func TestGetNextKatamonGame_simple(t *testing.T) {
 		}
 	})
 
-	r, g, err := GetNextKatamonGame(ctx, &fc)
+	r, g, err := gf.GetNextKatamonGame(ctx)
 
 	if err != nil {
 		t.Fatal("Expected nil, got: ", err)
@@ -82,6 +88,9 @@ func TestGetNextKatamonGame_simple(t *testing.T) {
 
 func TestGetNextKatamonGame_past(t *testing.T) {
 	fc := fakeAPIClient{}
+	gf := GamesFetcherInst{
+		Client: &fc,
+	}
 	ctx := context.Background()
 	gt := time.Now().Add(time.Hour * -1)
 
@@ -143,7 +152,7 @@ func TestGetNextKatamonGame_past(t *testing.T) {
 		}
 	})
 
-	r, g, err := GetNextKatamonGame(ctx, &fc)
+	r, g, err := gf.GetNextKatamonGame(ctx)
 
 	if err != nil {
 		t.Fatal("Expected nil, got: ", err)
