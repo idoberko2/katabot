@@ -28,12 +28,16 @@ func reply(ctx context.Context, bot sender, update *tgbotapi.Update, gf GamesFet
 		}
 	case nextmatchcommand:
 		{
-			_, g, _ := gf.GetNextKatamonGame(ctx)
-			fmt.Printf("%+v\n", g)
-			msg.Text = fmt.Sprintf(`המשחק הבא:
+			_, g, err := gf.GetNextKatamonGame(ctx)
+			if err != nil {
+				msg.Text = `משהו קרה ואני לא מצליח למצוא את המשחק הבא 🤔
+		נקווה שבפעם הבאה שתנסו אצליח אבל אין לדעת ¯\_(ツ)_/¯`
+			} else {
+				msg.Text = fmt.Sprintf(`המשחק הבא:
 		%s - %s,
 		מיקום: %s,
 		זמן: %s`, g.HomeTeam, g.GuestTeam, g.Stadium, g.Date.Format(time.RFC3339))
+			}
 		}
 	default:
 		{

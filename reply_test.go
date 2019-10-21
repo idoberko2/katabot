@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -25,7 +26,19 @@ type fakeGamesFetcher struct {
 func (gf *fakeGamesFetcher) GetNextKatamonGame(ctx context.Context) (*Round, *Game, error) {
 	args := gf.Called(ctx)
 
-	return args.Get(0).(*Round), args.Get(1).(*Game), args.Error(2)
+	var arg0 *Round
+
+	if args.Get(0) != nil {
+		arg0 = args.Get(0).(*Round)
+	}
+
+	var arg1 *Game
+
+	if args.Get(1) != nil {
+		arg1 = args.Get(1).(*Game)
+	}
+
+	return arg0, arg1, args.Error(2)
 }
 
 func (bot *fakeBot) Send(c tgbotapi.Chattable) (tgbotapi.Message, error) {
@@ -106,6 +119,29 @@ func TestReply_nextmatch(t *testing.T) {
 		%s - %s,
 		מיקום: %s,
 		זמן: %s`, g.HomeTeam, g.GuestTeam, g.Stadium, g.Date.Format(time.RFC3339)),
+		t: t,
+	}
+	u := tgbotapi.Update{
+		UpdateID: 19,
+		Message: &tgbotapi.Message{
+			Chat: &tgbotapi.Chat{
+				ID: 20,
+			},
+			Text: nextmatchcommand,
+		},
+	}
+
+	reply(ctx, &bot, &u, &fg)
+}
+
+func TestReply_nextmatch_error(t *testing.T) {
+	ctx := context.Background()
+	fg := fakeGamesFetcher{}
+	fg.On("GetNextKatamonGame", mock.Anything).Return(nil, nil, errors.New("Some error occurred fetching next game"))
+	bot := fakeBot{
+		testedCommand: nextmatchcommand,
+		expectedMessage: `משהו קרה ואני לא מצליח למצוא את המשחק הבא 🤔
+		נקווה שבפעם הבאה שתנסו אצליח אבל אין לדעת ¯\_(ツ)_/¯`,
 		t: t,
 	}
 	u := tgbotapi.Update{
