@@ -44,7 +44,7 @@ func main() {
 	ctx := context.Background()
 	gf := GamesFetcherInst{
 		Client: APIClient{
-			URL:  fmt.Sprintf("http://%s%s/graphql", gh, os.Getenv("GRAPHQL_PORT")),
+			URL:  fmt.Sprintf("%s%s/graphql", gh, os.Getenv("GRAPHQL_PORT")),
 			Mime: "application/json",
 		},
 	}
