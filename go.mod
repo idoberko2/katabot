@@ -1,4 +1,4 @@
-module github.com/idoberko2/telegram-bot
+module github.com/idoberko2/telegram-katabot
 
 go 1.12
 
