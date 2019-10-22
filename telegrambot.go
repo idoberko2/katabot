@@ -17,10 +17,15 @@ type sender interface {
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("Error loading .env file")
 	}
 
-	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_APITOKEN"))
+	t := os.Getenv("TELEGRAM_APITOKEN")
+	if t == "" {
+		log.Fatal("Missing telegram API token")
+	}
+
+	bot, err := tgbotapi.NewBotAPI(t)
 	if err != nil {
 		log.Fatal(err)
 	}
