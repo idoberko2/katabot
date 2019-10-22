@@ -116,9 +116,9 @@ func TestReply_nextmatch(t *testing.T) {
 	bot := fakeBot{
 		testedCommand: nextmatchcommand,
 		expectedMessage: fmt.Sprintf(`המשחק הבא - מחזור %s
-		%s - %s
-		מיקום: %s
-		יום %s, %s`, r.RoundID, g.HomeTeam, g.GuestTeam, g.Stadium, translateDay(g.Date.Format("Monday")), g.Date.Format("15:04")),
+%s - %s
+מיקום: %s
+יום %s, %s, %s`, r.RoundID, g.HomeTeam, g.GuestTeam, g.Stadium, translateDay(g.Date.Format("Monday")), g.Date.Format("02/01"), g.Date.Format("15:04")),
 		t: t,
 	}
 	u := tgbotapi.Update{
@@ -141,7 +141,7 @@ func TestReply_nextmatch_error(t *testing.T) {
 	bot := fakeBot{
 		testedCommand: nextmatchcommand,
 		expectedMessage: `משהו קרה ואני לא מצליח למצוא את המשחק הבא 🤔
-		נקווה שבפעם הבאה שתנסו אצליח אבל אין לדעת ¯\_(ツ)_/¯`,
+נקווה שבפעם הבאה שתנסו אצליח אבל אין לדעת ¯\_(ツ)_/¯`,
 		t: t,
 	}
 	u := tgbotapi.Update{

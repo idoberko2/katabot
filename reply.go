@@ -51,12 +51,12 @@ func reply(ctx context.Context, bot sender, update *tgbotapi.Update, gf GamesFet
 			r, g, err := gf.GetNextKatamonGame(ctx)
 			if err != nil {
 				msg.Text = `משהו קרה ואני לא מצליח למצוא את המשחק הבא 🤔
-		נקווה שבפעם הבאה שתנסו אצליח אבל אין לדעת ¯\_(ツ)_/¯`
+נקווה שבפעם הבאה שתנסו אצליח אבל אין לדעת ¯\_(ツ)_/¯`
 			} else {
 				msg.Text = fmt.Sprintf(`המשחק הבא - מחזור %s
-		%s - %s
-		מיקום: %s
-		יום %s, %s`, r.RoundID, g.HomeTeam, g.GuestTeam, g.Stadium, translateDay(g.Date.Format("Monday")), g.Date.Format("15:04"))
+%s - %s
+מיקום: %s
+יום %s, %s, %s`, r.RoundID, g.HomeTeam, g.GuestTeam, g.Stadium, translateDay(g.Date.Format("Monday")), g.Date.Format("02/01"), g.Date.Format("15:04"))
 			}
 		}
 	default:
