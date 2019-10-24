@@ -1,0 +1,37 @@
+image: golang:1.10
+
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  APP_NAME: katabot
+
+before_script:
+  - go get -u github.com/golang/dep/cmd/dep
+  - mkdir -p $GOPATH/src
+  - cd $GOPATH/src
+  - ln -s $CI_PROJECT_DIR
+  - cd $CI_PROJECT_NAME
+  - dep ensure
+
+test:
+  stage: test
+  script:
+    - go test
+
+build:
+  stage: build
+  script:
+    - go build
+
+deploy:
+  image: ilyasemenov/gitlab-ci-git-push
+  stage: deploy
+  environment:
+    name: production
+  only:
+    - master
+  script:
+    - git-push ssh://dokku@$DOKKU_HOST:22/$APP_NAME
