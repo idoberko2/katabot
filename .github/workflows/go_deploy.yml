@@ -28,7 +28,7 @@ jobs:
       - name: Build
         run: go build -v .
       - name: Test
-        run: go test -v
+        run: go test -v -cover
       - name: Deploy
         uses: idoberko2/dokku-deploy-github-action@v1
         with:
