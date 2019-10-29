@@ -10,10 +10,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type sender interface {
-	Send(c tgbotapi.Chattable) (tgbotapi.Message, error)
-}
-
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -49,7 +45,11 @@ func main() {
 		},
 	}
 
+	s := botSender{
+		bot: bot,
+	}
+
 	for update := range updates {
-		go reply(ctx, bot, &update, &gf)
+		go reply(ctx, s, &update, &gf)
 	}
 }
