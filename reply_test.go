@@ -13,10 +13,7 @@ import (
 )
 
 type fakeBot struct {
-	expectedMessage string
-	testedCommand   string
-	callCounter     int
-	t               *testing.T
+	mock.Mock
 }
 
 type fakeGamesFetcher struct {
@@ -41,47 +38,34 @@ func (gf *fakeGamesFetcher) GetNextKatamonGame(ctx context.Context) (*Round, *Ga
 	return arg0, arg1, args.Error(2)
 }
 
-func (bot *fakeBot) Send(c tgbotapi.Chattable) (tgbotapi.Message, error) {
-	bot.callCounter++
+func (b *fakeBot) SendText(cid int64, t string) (tgbotapi.Message, error) {
+	args := b.Called(cid, t)
 
-	switch v := c.(type) {
-	case *tgbotapi.MessageConfig:
-		{
-			if v.Text != bot.expectedMessage {
-				bot.t.Fatalf(`Expected %s response to be
-		"%s"
-		got:
-		"%s"`, bot.expectedMessage, bot.expectedMessage, v.Text)
-			}
-		}
-	}
+	return tgbotapi.Message{
+		Text: args.String(0),
+	}, args.Error(1)
+}
 
-	return tgbotapi.Message{}, nil
+func (b *fakeBot) SetReplyTo(mid int) {
+	b.Called(mid)
 }
 
 func TestReply_nil(t *testing.T) {
 	ctx := context.Background()
-	bot := fakeBot{
-		t: t,
-	}
+	bot := fakeBot{}
+	bot.On("SendText", mock.Anything, mock.Anything).Return(nil, nil)
 	u := tgbotapi.Update{
 		UpdateID: 17,
 	}
 
 	reply(ctx, &bot, &u, &fakeGamesFetcher{})
-	if bot.callCounter > 0 {
-		t.Fatalf("Expected Send to not be called, but it was called %d times", bot.callCounter)
-	}
+	bot.AssertNotCalled(t, "SendText", mock.Anything, mock.Anything)
 }
 
 func TestReply_start(t *testing.T) {
 	ctx := context.Background()
-	bot := fakeBot{
-		testedCommand: startcommand,
-		expectedMessage: fmt.Sprintf(`ברוכים הבאים ❤️🖤❤️🖤!
-		כדי לשאול אותי מתי המשחק הבא, שלחו לי את הפקודה %s`, nextmatchcommand),
-		t: t,
-	}
+	bot := fakeBot{}
+	bot.On("SendText", mock.Anything, mock.Anything).Return("", nil)
 	u := tgbotapi.Update{
 		UpdateID: 18,
 		Message: &tgbotapi.Message{
@@ -93,6 +77,8 @@ func TestReply_start(t *testing.T) {
 	}
 
 	reply(ctx, &bot, &u, &fakeGamesFetcher{})
+	bot.AssertCalled(t, "SendText", u.Message.Chat.ID, fmt.Sprintf(`ברוכים הבאים ❤️🖤❤️🖤!
+כדי לשאול אותי מתי המשחק הבא, שלחו לי את הפקודה %s`, nextmatchcommand))
 }
 
 func TestReply_nextmatch(t *testing.T) {
@@ -113,14 +99,8 @@ func TestReply_nextmatch(t *testing.T) {
 		Games:       []Game{g},
 	}
 	fg.On("GetNextKatamonGame", mock.Anything).Return(&r, &g, nil)
-	bot := fakeBot{
-		testedCommand: nextmatchcommand,
-		expectedMessage: fmt.Sprintf(`המשחק הבא - מחזור %s
-%s - %s
-מיקום: %s
-יום %s, %s, %s`, r.RoundID, g.HomeTeam, g.GuestTeam, g.Stadium, translateDay(g.Date.Format("Monday")), g.Date.Format("02/01"), g.Date.Format("15:04")),
-		t: t,
-	}
+	bot := fakeBot{}
+	bot.On("SendText", mock.Anything, mock.Anything).Return("", nil)
 	u := tgbotapi.Update{
 		UpdateID: 19,
 		Message: &tgbotapi.Message{
@@ -132,18 +112,18 @@ func TestReply_nextmatch(t *testing.T) {
 	}
 
 	reply(ctx, &bot, &u, &fg)
+	bot.AssertCalled(t, "SendText", u.Message.Chat.ID, fmt.Sprintf(`המשחק הבא - מחזור %s
+%s - %s
+מיקום: %s
+יום %s, %s, %s`, r.RoundID, g.HomeTeam, g.GuestTeam, g.Stadium, translateDay(g.Date.Format("Monday")), g.Date.Format("02/01"), g.Date.Format("15:04")))
 }
 
 func TestReply_nextmatch_error(t *testing.T) {
 	ctx := context.Background()
 	fg := fakeGamesFetcher{}
 	fg.On("GetNextKatamonGame", mock.Anything).Return(nil, nil, errors.New("Some error occurred fetching next game"))
-	bot := fakeBot{
-		testedCommand: nextmatchcommand,
-		expectedMessage: `משהו קרה ואני לא מצליח למצוא את המשחק הבא 🤔
-נקווה שבפעם הבאה שתנסו אצליח אבל אין לדעת ¯\_(ツ)_/¯`,
-		t: t,
-	}
+	bot := fakeBot{}
+	bot.On("SendText", mock.Anything, mock.Anything).Return("", nil)
 	u := tgbotapi.Update{
 		UpdateID: 19,
 		Message: &tgbotapi.Message{
@@ -155,14 +135,15 @@ func TestReply_nextmatch_error(t *testing.T) {
 	}
 
 	reply(ctx, &bot, &u, &fg)
+	bot.AssertCalled(t, "SendText", u.Message.Chat.ID, `משהו קרה ואני לא מצליח למצוא את המשחק הבא 🤔
+נקווה שבפעם הבאה שתנסו אצליח אבל אין לדעת ¯\_(ツ)_/¯`)
 }
 
 func TestReply_default_group(t *testing.T) {
 	ctx := context.Background()
-	bot := fakeBot{
-		t:             t,
-		testedCommand: "unknown commandddd",
-	}
+	uc := "unknown commandddd"
+	bot := fakeBot{}
+	bot.On("SendText", mock.Anything, mock.Anything).Return("", nil)
 	u := tgbotapi.Update{
 		UpdateID: 20,
 		Message: &tgbotapi.Message{
@@ -170,30 +151,25 @@ func TestReply_default_group(t *testing.T) {
 				ID:   21,
 				Type: "group",
 			},
-			Text: bot.testedCommand,
+			Text: uc,
 		},
 	}
 
 	reply(ctx, &bot, &u, &fakeGamesFetcher{})
-	if bot.callCounter > 0 {
-		t.Fatalf("Expected Send to not be called, but it was called %d times", bot.callCounter)
-	}
+	bot.AssertNotCalled(t, "SendText", mock.Anything, mock.Anything)
 }
 
 func TestReply_default_private(t *testing.T) {
 	ctx := context.Background()
 	uc := "unknown commandddd"
-	bot := fakeBot{
-		t:             t,
-		testedCommand: uc,
-		expectedMessage: fmt.Sprintf(`מצטער, אני לא יודע מה לעשות עם ״%s״
-			יש רק דבר אחד שאני יודע לעשות, אבל אני עושה אותו ממש טוב 😇
-			כדי לראות אותי בפעולה, שלחו לי %s`, uc, nextmatchcommand),
-	}
+	bot := fakeBot{}
+	bot.On("SendText", mock.Anything, mock.Anything).Return("", nil)
+	bot.On("SetReplyTo", mock.Anything).Return()
 
 	u := tgbotapi.Update{
 		UpdateID: 20,
 		Message: &tgbotapi.Message{
+			MessageID: 1234,
 			Chat: &tgbotapi.Chat{
 				ID:   21,
 				Type: "private",
@@ -203,4 +179,51 @@ func TestReply_default_private(t *testing.T) {
 	}
 
 	reply(ctx, &bot, &u, &fakeGamesFetcher{})
+	bot.AssertCalled(t, "SetReplyTo", u.Message.MessageID)
+	bot.AssertCalled(
+		t,
+		"SendText",
+		u.Message.Chat.ID,
+		fmt.Sprintf(
+			`מצטער, אני לא יודע מה לעשות עם "%s"
+יש רק דבר אחד שאני יודע לעשות, אבל אני עושה אותו ממש טוב 😇
+כדי לראות אותי בפעולה, שלחו לי %s`,
+			uc,
+			nextmatchcommand,
+		),
+	)
+}
+
+func TestReply_empty_private(t *testing.T) {
+	ctx := context.Background()
+	uc := ""
+	bot := fakeBot{}
+	bot.On("SendText", mock.Anything, mock.Anything).Return("", nil)
+	bot.On("SetReplyTo", mock.Anything).Return()
+
+	u := tgbotapi.Update{
+		UpdateID: 20,
+		Message: &tgbotapi.Message{
+			MessageID: 1234,
+			Chat: &tgbotapi.Chat{
+				ID:   21,
+				Type: "private",
+			},
+			Text: uc,
+		},
+	}
+
+	reply(ctx, &bot, &u, &fakeGamesFetcher{})
+	bot.AssertCalled(t, "SetReplyTo", u.Message.MessageID)
+	bot.AssertCalled(
+		t,
+		"SendText",
+		u.Message.Chat.ID,
+		fmt.Sprintf(
+			`מצטער, אני לא יודע מה לעשות עם זה...
+יש רק דבר אחד שאני יודע לעשות, אבל אני עושה אותו ממש טוב 😇
+כדי לראות אותי בפעולה, שלחו לי %s`,
+			nextmatchcommand,
+		),
+	)
 }
