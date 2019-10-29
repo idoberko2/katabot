@@ -50,6 +50,6 @@ func main() {
 	}
 
 	for update := range updates {
-		go reply(ctx, s, &update, &gf)
+		go reply(ctx, &s, &update, &gf)
 	}
 }

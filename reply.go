@@ -21,7 +21,7 @@ type botSender struct {
 	replyToMessageID int
 }
 
-func (s botSender) SendText(cid int64, t string) (tgbotapi.Message, error) {
+func (s *botSender) SendText(cid int64, t string) (tgbotapi.Message, error) {
 	msg := tgbotapi.NewMessage(cid, t)
 
 	if s.replyToMessageID != 0 {
@@ -31,7 +31,7 @@ func (s botSender) SendText(cid int64, t string) (tgbotapi.Message, error) {
 	return s.bot.Send(&msg)
 }
 
-func (s botSender) SetReplyTo(mid int) {
+func (s *botSender) SetReplyTo(mid int) {
 	s.replyToMessageID = mid
 }
 
