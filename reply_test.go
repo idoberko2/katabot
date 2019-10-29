@@ -178,10 +178,41 @@ func TestReply_default_private(t *testing.T) {
 		"SendText",
 		u.Message.Chat.ID,
 		fmt.Sprintf(
-			`מצטער, אני לא יודע מה לעשות עם ״%s״
+			`מצטער, אני לא יודע מה לעשות עם "%s"
 יש רק דבר אחד שאני יודע לעשות, אבל אני עושה אותו ממש טוב 😇
 כדי לראות אותי בפעולה, שלחו לי %s`,
 			uc,
+			nextmatchcommand,
+		),
+	)
+}
+
+func TestReply_empty_private(t *testing.T) {
+	ctx := context.Background()
+	uc := ""
+	bot := fakeBot{}
+	bot.On("SendText", mock.Anything, mock.Anything).Return("", nil)
+
+	u := tgbotapi.Update{
+		UpdateID: 20,
+		Message: &tgbotapi.Message{
+			Chat: &tgbotapi.Chat{
+				ID:   21,
+				Type: "private",
+			},
+			Text: uc,
+		},
+	}
+
+	reply(ctx, &bot, &u, &fakeGamesFetcher{})
+	bot.AssertCalled(
+		t,
+		"SendText",
+		u.Message.Chat.ID,
+		fmt.Sprintf(
+			`מצטער, אני לא יודע מה לעשות עם זה...
+יש רק דבר אחד שאני יודע לעשות, אבל אני עושה אותו ממש טוב 😇
+כדי לראות אותי בפעולה, שלחו לי %s`,
 			nextmatchcommand,
 		),
 	)

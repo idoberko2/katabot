@@ -75,9 +75,17 @@ func reply(ctx context.Context, bot sender, update *tgbotapi.Update, gf GamesFet
 	default:
 		{
 			if update.Message.Chat.IsPrivate() {
-				msg = fmt.Sprintf(`מצטער, אני לא יודע מה לעשות עם ״%s״
+				q := func(t string) string {
+					if t == "" {
+						return "זה..."
+					}
+
+					return fmt.Sprintf(`"%s"`, t)
+				}(update.Message.Text)
+
+				msg = fmt.Sprintf(`מצטער, אני לא יודע מה לעשות עם %s
 יש רק דבר אחד שאני יודע לעשות, אבל אני עושה אותו ממש טוב 😇
-כדי לראות אותי בפעולה, שלחו לי %s`, update.Message.Text, nextmatchcommand)
+כדי לראות אותי בפעולה, שלחו לי %s`, q, nextmatchcommand)
 				// msg.ReplyToMessageID = update.Message.MessageID
 			} else {
 				log.Println("Nothing to send")
