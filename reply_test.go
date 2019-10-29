@@ -46,6 +46,10 @@ func (b *fakeBot) SendText(cid int64, t string) (tgbotapi.Message, error) {
 	}, args.Error(1)
 }
 
+func (b *fakeBot) SetReplyTo(mid int) {
+	b.Called(mid)
+}
+
 func TestReply_nil(t *testing.T) {
 	ctx := context.Background()
 	bot := fakeBot{}
@@ -55,7 +59,7 @@ func TestReply_nil(t *testing.T) {
 	}
 
 	reply(ctx, &bot, &u, &fakeGamesFetcher{})
-	bot.AssertNotCalled(t, "SendText", mock.Anything)
+	bot.AssertNotCalled(t, "SendText", mock.Anything, mock.Anything)
 }
 
 func TestReply_start(t *testing.T) {
@@ -160,10 +164,12 @@ func TestReply_default_private(t *testing.T) {
 	uc := "unknown commandddd"
 	bot := fakeBot{}
 	bot.On("SendText", mock.Anything, mock.Anything).Return("", nil)
+	bot.On("SetReplyTo", mock.Anything).Return()
 
 	u := tgbotapi.Update{
 		UpdateID: 20,
 		Message: &tgbotapi.Message{
+			MessageID: 1234,
 			Chat: &tgbotapi.Chat{
 				ID:   21,
 				Type: "private",
@@ -173,6 +179,7 @@ func TestReply_default_private(t *testing.T) {
 	}
 
 	reply(ctx, &bot, &u, &fakeGamesFetcher{})
+	bot.AssertCalled(t, "SetReplyTo", u.Message.MessageID)
 	bot.AssertCalled(
 		t,
 		"SendText",
@@ -192,10 +199,12 @@ func TestReply_empty_private(t *testing.T) {
 	uc := ""
 	bot := fakeBot{}
 	bot.On("SendText", mock.Anything, mock.Anything).Return("", nil)
+	bot.On("SetReplyTo", mock.Anything).Return()
 
 	u := tgbotapi.Update{
 		UpdateID: 20,
 		Message: &tgbotapi.Message{
+			MessageID: 1234,
 			Chat: &tgbotapi.Chat{
 				ID:   21,
 				Type: "private",
@@ -205,6 +214,7 @@ func TestReply_empty_private(t *testing.T) {
 	}
 
 	reply(ctx, &bot, &u, &fakeGamesFetcher{})
+	bot.AssertCalled(t, "SetReplyTo", u.Message.MessageID)
 	bot.AssertCalled(
 		t,
 		"SendText",

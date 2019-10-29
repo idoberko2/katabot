@@ -13,15 +13,26 @@ const nextmatchcommand string = "/nextmatch"
 
 type sender interface {
 	SendText(cid int64, t string) (tgbotapi.Message, error)
+	SetReplyTo(mid int)
 }
 
 type botSender struct {
-	bot *tgbotapi.BotAPI
+	bot              *tgbotapi.BotAPI
+	replyToMessageID int
 }
 
 func (s botSender) SendText(cid int64, t string) (tgbotapi.Message, error) {
 	msg := tgbotapi.NewMessage(cid, t)
+
+	if s.replyToMessageID != 0 {
+		msg.ReplyToMessageID = s.replyToMessageID
+	}
+
 	return s.bot.Send(&msg)
+}
+
+func (s botSender) SetReplyTo(mid int) {
+	s.replyToMessageID = mid
 }
 
 func translateDay(d string) string {
@@ -45,7 +56,7 @@ func translateDay(d string) string {
 	return ""
 }
 
-func reply(ctx context.Context, bot sender, update *tgbotapi.Update, gf GamesFetcher) {
+func reply(ctx context.Context, s sender, update *tgbotapi.Update, gf GamesFetcher) {
 	if update.Message == nil {
 		log.Println("Not a message update")
 		return
@@ -86,7 +97,7 @@ func reply(ctx context.Context, bot sender, update *tgbotapi.Update, gf GamesFet
 				msg = fmt.Sprintf(`מצטער, אני לא יודע מה לעשות עם %s
 יש רק דבר אחד שאני יודע לעשות, אבל אני עושה אותו ממש טוב 😇
 כדי לראות אותי בפעולה, שלחו לי %s`, q, nextmatchcommand)
-				// msg.ReplyToMessageID = update.Message.MessageID
+				s.SetReplyTo(update.Message.MessageID)
 			} else {
 				log.Println("Nothing to send")
 				return
@@ -94,7 +105,7 @@ func reply(ctx context.Context, bot sender, update *tgbotapi.Update, gf GamesFet
 		}
 	}
 
-	if _, err := bot.SendText(update.Message.Chat.ID, msg); err != nil {
+	if _, err := s.SendText(update.Message.Chat.ID, msg); err != nil {
 		log.Fatal(err)
 	}
 }
