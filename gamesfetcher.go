@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 )
@@ -130,7 +132,19 @@ func extractRoundFromResponse(r *roundResponse) *Round {
 	var games []Game
 
 	for _, g := range r.Games {
-		t, _ := time.Parse(time.RFC3339, string(g.Date))
+		t, err := time.Parse(time.RFC3339, string(g.Date))
+		if err != nil {
+			log.Print("Error when parsing time: ", err)
+		}
+
+		if os.Getenv("MATCHES_TIMEZONE") != "" {
+			loc, err := time.LoadLocation(os.Getenv("MATCHES_TIMEZONE"))
+			if err != nil {
+				log.Print("Error loading timezone: ", err)
+			}
+			t = t.In(loc)
+		}
+
 		games = append(games, Game{
 			HomeTeam:  g.HomeTeam,
 			GuestTeam: g.GuestTeam,
