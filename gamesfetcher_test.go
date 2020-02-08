@@ -46,8 +46,8 @@ func TestGetNextKatamonGame_simple(t *testing.T) {
 	// expected timestamp
 	os.Setenv("MATCHES_TIMEZONE", "Asia/Jerusalem")
 	loc, _ := time.LoadLocation("Asia/Jerusalem")
-	responseTimestamp := "2020-02-14T13:00:00.000Z"
-	exDate := time.Unix(1581685200, 0).In(loc)
+	responseTimestamp := time.Now().Add(time.Hour).Round(time.Second)
+	exDate := responseTimestamp.In(loc)
 	fc.On("Request", map[string]interface{}{
 		"operationName": "getNextRound",
 		"query":         nextRoundQuery,
@@ -69,7 +69,7 @@ func TestGetNextKatamonGame_simple(t *testing.T) {
 						HomeTeam:  "הפועל קטמון י-ם",
 						GuestTeam: "Beitar",
 						Stadium:   "Teddy",
-						Date:      responseTimestamp,
+						Date:      responseTimestamp.Format(time.RFC3339),
 					},
 				},
 			},
@@ -98,7 +98,12 @@ func TestGetNextKatamonGame_past(t *testing.T) {
 		Client: &fc,
 	}
 	ctx := context.Background()
-	gt := time.Now().Add(time.Hour * -1)
+
+	// expected timestamp
+	os.Setenv("MATCHES_TIMEZONE", "Asia/Jerusalem")
+	loc, _ := time.LoadLocation("Asia/Jerusalem")
+	responseTimestamp := time.Now().Add(time.Hour * -1).Round(time.Second)
+	exDate := responseTimestamp.In(loc)
 
 	fc.On("Request", map[string]interface{}{
 		"operationName": "getNextRound",
@@ -121,7 +126,7 @@ func TestGetNextKatamonGame_past(t *testing.T) {
 						HomeTeam:  "הפועל קטמון י-ם",
 						GuestTeam: "Beitar",
 						Stadium:   "Teddy",
-						Date:      gt.Format(time.RFC3339),
+						Date:      responseTimestamp.Format(time.RFC3339),
 					},
 				},
 			},
@@ -151,7 +156,7 @@ func TestGetNextKatamonGame_past(t *testing.T) {
 						HomeTeam:  "Rishon",
 						GuestTeam: "הפועל קטמון י-ם",
 						Stadium:   "Rishon",
-						Date:      gt.Format(time.RFC3339),
+						Date:      responseTimestamp.Format(time.RFC3339),
 					},
 				},
 			},
@@ -171,5 +176,5 @@ func TestGetNextKatamonGame_past(t *testing.T) {
 	assert.Equal(t, g.HomeTeam, "Rishon", "Expected Rishon to be the home team")
 	assert.Equal(t, g.GuestTeam, "הפועל קטמון י-ם", "Expected Katamon to be the guest team")
 	assert.Equal(t, g.Stadium, "Rishon", "Expected Rishon to be the stadium")
-	assert.Equal(t, g.Date.Format(time.RFC3339), gt.Format(time.RFC3339), "Expected game time to be correct")
+	assert.Equal(t, exDate, g.Date, "Expected game time to be correct")
 }

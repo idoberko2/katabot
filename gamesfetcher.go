@@ -144,7 +144,6 @@ func extractRoundFromResponse(r *roundResponse) *Round {
 			}
 			t = t.In(loc)
 		}
-
 		games = append(games, Game{
 			HomeTeam:  g.HomeTeam,
 			GuestTeam: g.GuestTeam,
